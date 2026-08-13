@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: "1.12.2" }
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with: { role-to-assume: "${{ vars.AWS_PLAN_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}", role-session-name: gha-terraform-plan }
       - run: terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="key=eks-platform/${{ inputs.environment }}/terraform.tfstate" -backend-config="region=${{ vars.AWS_REGION }}" -backend-config="use_lockfile=true" -backend-config="encrypt=true"
         working-directory: terraform/environments/${{ inputs.environment }}
