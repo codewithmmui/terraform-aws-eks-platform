@@ -1,0 +1,9 @@
+clusterName: REPLACE_CLUSTER_NAME
+region: us-east-1
+vpcId: REPLACE_VPC_ID
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations: { eks.amazonaws.com/role-arn: REPLACE_ALB_ROLE_ARN }
+replicaCount: 2
+resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }

@@ -1,0 +1,3 @@
+* @REPLACE_GITHUB_ORG/platform-team
+/terraform/environments/prod/ @REPLACE_GITHUB_ORG/platform-admins
+/.github/workflows/ @REPLACE_GITHUB_ORG/platform-admins

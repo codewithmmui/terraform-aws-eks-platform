@@ -1,0 +1,9 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata: { name: platform-apps, namespace: argocd }
+spec:
+  description: Platform-managed applications
+  sourceRepos: ["https://github.com/REPLACE_ORG/terraform-aws-eks-platform.git"]
+  destinations: [{ namespace: applications, server: "https://kubernetes.default.svc" }]
+  clusterResourceWhitelist: [{ group: "", kind: Namespace }]
+  namespaceResourceWhitelist: [{ group: "*", kind: "*" }]

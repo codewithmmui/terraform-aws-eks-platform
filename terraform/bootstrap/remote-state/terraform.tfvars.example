@@ -1,0 +1,3 @@
+aws_region   = "us-east-1"
+project_name = "terraform-aws-eks-platform"
+# bucket_name = "globally-unique-state-bucket"

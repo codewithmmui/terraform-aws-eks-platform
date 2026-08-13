@@ -1,0 +1,28 @@
+name: Terraform PR
+on:
+  pull_request:
+    paths: ["terraform/**", ".github/workflows/**", ".tflint.hcl"]
+permissions: { contents: read, security-events: write }
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy: { fail-fast: false, matrix: { environment: [dev, staging, prod] } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: "1.12.2" }
+      - uses: terraform-linters/setup-tflint@v5
+      - run: terraform fmt -check -recursive terraform
+      - run: terraform -chdir=terraform/environments/${{ matrix.environment }} init -backend=false
+      - run: terraform -chdir=terraform/environments/${{ matrix.environment }} validate
+      - run: tflint --init && tflint --recursive
+      - uses: aquasecurity/trivy-action@master
+        with: { scan-type: config, scan-ref: ., exit-code: "1", severity: "HIGH,CRITICAL" }
+      - uses: bridgecrewio/checkov-action@master
+        with: { directory: ., framework: terraform,kubernetes,github_actions, quiet: true }
+  plan:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: validate
+    uses: ./.github/workflows/terraform-plan.yml
+    with: { environment: dev }
+    secrets: inherit

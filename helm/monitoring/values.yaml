@@ -1,0 +1,13 @@
+grafana:
+  enabled: true
+  adminPassword: null
+  persistence: { enabled: false }
+  sidecar: { dashboards: { enabled: true }, datasources: { enabled: true } }
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    storageSpec: {}
+    resources: { requests: { cpu: 200m, memory: 512Mi }, limits: { cpu: "2", memory: 2Gi } }
+alertmanager:
+  enabled: true
+defaultRules: { create: true }

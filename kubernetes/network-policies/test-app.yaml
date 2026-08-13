@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: test-app-ingress, namespace: applications }
+spec:
+  podSelector: { matchLabels: { app: test-app } }
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-system } } }], ports: [{ protocol: TCP, port: 8080 }] }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: backend-to-database, namespace: applications }
+spec:
+  podSelector: { matchLabels: { app: database } }
+  policyTypes: [Ingress]
+  ingress: [{ from: [{ podSelector: { matchLabels: { app: backend } } }], ports: [{ protocol: TCP, port: 5432 }] }]

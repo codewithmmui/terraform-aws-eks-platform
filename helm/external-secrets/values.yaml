@@ -1,0 +1,7 @@
+replicaCount: 2
+serviceAccount:
+  create: true
+  name: external-secrets
+  annotations: { eks.amazonaws.com/role-arn: REPLACE_EXTERNAL_SECRETS_ROLE_ARN }
+securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] }, readOnlyRootFilesystem: true, runAsNonRoot: true }
+resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 256Mi } }

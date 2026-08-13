@@ -1,0 +1,10 @@
+provider: { name: aws }
+policy: upsert-only
+registry: txt
+txtOwnerId: REPLACE_CLUSTER_NAME
+domainFilters: [example.com]
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations: { eks.amazonaws.com/role-arn: REPLACE_EXTERNAL_DNS_ROLE_ARN }
+resources: { requests: { cpu: 25m, memory: 64Mi }, limits: { cpu: 250m, memory: 256Mi } }

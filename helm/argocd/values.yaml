@@ -1,0 +1,11 @@
+global: { domain: argocd.example.com }
+configs:
+  params: { server.insecure: false }
+  cm: { admin.enabled: "false", application.resourceTrackingMethod: annotation }
+server:
+  service: { type: ClusterIP }
+  resources: { requests: { cpu: 100m, memory: 128Mi }, limits: { cpu: 500m, memory: 512Mi } }
+controller:
+  replicas: 1
+  resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: "1", memory: 1Gi } }
+repoServer: { replicas: 2 }
