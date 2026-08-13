@@ -10,7 +10,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v6
         with: { role-to-assume: "${{ vars.AWS_APPLY_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}" }
       - run: printf '%s' '${{ secrets.TF_VARS_JSON }}' > terraform.auto.tfvars.json
         working-directory: terraform/environments/${{ inputs.environment }}
