@@ -9,7 +9,7 @@ jobs:
     strategy: { fail-fast: false, matrix: { environment: [dev, staging, prod] } }
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with: { terraform_version: "1.12.2" }
       - uses: terraform-linters/setup-tflint@v5
       - run: terraform fmt -check -recursive terraform
