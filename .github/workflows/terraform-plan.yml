@@ -21,5 +21,5 @@ jobs:
         working-directory: terraform/environments/${{ inputs.environment }}
       - run: terraform show -no-color tfplan > tfplan.txt
         working-directory: terraform/environments/${{ inputs.environment }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: "tfplan-${{ inputs.environment }}-${{ github.sha }}", path: "terraform/environments/${{ inputs.environment }}/tfplan*", retention-days: 5 }
