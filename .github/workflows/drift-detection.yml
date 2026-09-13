@@ -1,19 +1,117 @@
 name: Drift Detection
-on: { schedule: [{ cron: "23 5 * * 1-5" }], workflow_dispatch: { inputs: { environment: { type: choice, options: [dev, staging, prod], default: dev } } } }
-permissions: { contents: read, id-token: write, issues: write }
+
+on:
+  schedule:
+    - cron: "23 5 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: drift-detection-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   drift:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: ${{ inputs.environment || 'dev' }}-plan
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - uses: aws-actions/configure-aws-credentials@v4
-        with: { role-to-assume: "${{ vars.AWS_PLAN_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}" }
-      - id: plan
-        continue-on-error: true
-        env: { TF_VARS_JSON: "${{ secrets.TF_VARS_JSON }}" }
-        run: printf '%s' "$TF_VARS_JSON" > terraform.auto.tfvars.json && terraform init -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" -backend-config="key=eks-platform/${{ inputs.environment || 'dev' }}/terraform.tfstate" -backend-config="region=${{ vars.AWS_REGION }}" -backend-config="use_lockfile=true" -backend-config="encrypt=true" && terraform plan -detailed-exitcode -no-color
+
+      - name: Validate required configuration
+        env:
+          AWS_PLAN_ROLE_ARN: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          TF_VARS_JSON: ${{ secrets.TF_VARS_JSON }}
+        run: |
+          set -euo pipefail
+          for name in AWS_PLAN_ROLE_ARN AWS_REGION TF_STATE_BUCKET TF_VARS_JSON; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is not configured for environment '${{ inputs.environment || 'dev' }}-plan'"
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: terraform-drift-${{ github.run_id }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.12.2"
+          terraform_wrapper: false
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive terraform
+
+      - name: Write Terraform variables
         working-directory: terraform/environments/${{ inputs.environment || 'dev' }}
-      - if: steps.plan.outcome == 'failure'
-        run: echo "Drift or plan failure detected; inspect this workflow run." && exit 1
+        env:
+          TF_VARS_JSON: ${{ secrets.TF_VARS_JSON }}
+        run: printf '%s' "$TF_VARS_JSON" > terraform.auto.tfvars.json
+
+      - name: Terraform init
+        working-directory: terraform/environments/${{ inputs.environment || 'dev' }}
+        run: |
+          terraform init \
+            -input=false \
+            -reconfigure \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=eks-platform/${{ inputs.environment || 'dev' }}/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION }}" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform validate
+        working-directory: terraform/environments/${{ inputs.environment || 'dev' }}
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        working-directory: terraform/environments/${{ inputs.environment || 'dev' }}
+        shell: bash
+        run: |
+          set +e
+          terraform plan \
+            -detailed-exitcode \
+            -input=false \
+            -no-color
+          exit_code=$?
+          set -e
+
+          case "$exit_code" in
+            0)
+              echo "drift=false" >> "$GITHUB_OUTPUT"
+              echo "No drift detected."
+              ;;
+            2)
+              echo "drift=true" >> "$GITHUB_OUTPUT"
+              echo "::warning::Terraform drift detected."
+              ;;
+            *)
+              echo "::error::Terraform plan failed with exit code $exit_code."
+              exit "$exit_code"
+              ;;
+          esac
+
+      - name: Fail check when drift is detected
+        if: steps.plan.outputs.drift == 'true'
+        run: |
+          echo "Terraform drift detected; inspect this workflow run."
+          exit 1
